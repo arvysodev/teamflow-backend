@@ -36,5 +36,5 @@ out/
 .DS_Store
 Thumbs.db
 
-# Env files (если появятся)
+# Env files
 .env

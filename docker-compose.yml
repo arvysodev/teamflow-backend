@@ -3,9 +3,9 @@ services:
     image: postgres:16
     container_name: teamflow-db
     environment:
-      POSTGRES_DB: teamflow
-      POSTGRES_USER: teamflow
-      POSTGRES_PASSWORD: teamflow
+      POSTGRES_DB: ${DB_NAME:-teamflow}
+      POSTGRES_USER: ${DB_USER:-teamflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-teamflow}
     ports:
       - "5432:5432"
     volumes:
