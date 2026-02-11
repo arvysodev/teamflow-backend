@@ -1,6 +1,7 @@
 package com.teamflow.teamflow.backend.workspaces.service;
 
 import com.teamflow.teamflow.backend.common.errors.BadRequestException;
+import com.teamflow.teamflow.backend.common.errors.ConflictException;
 import com.teamflow.teamflow.backend.common.errors.NotFoundException;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
@@ -23,6 +24,10 @@ public class WorkspaceService {
     public Workspace createWorkspace(String name) {
         if (name == null || name.isBlank()) {
             throw new BadRequestException("Workspace name must not be blank.");
+        }
+
+        if (workspaceRepository.existsByName(name)) {
+            throw new ConflictException("Workspace with this name already exists.");
         }
 
         Workspace workspace = new Workspace(name);
