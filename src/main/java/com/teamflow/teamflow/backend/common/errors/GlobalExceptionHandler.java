@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -38,6 +39,16 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT,
                 "Conflict",
                 "Resource violates database constraints.",
+                request
+        );
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handleMethodNotValid(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        return problem(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                "Missing required value.",
                 request
         );
     }

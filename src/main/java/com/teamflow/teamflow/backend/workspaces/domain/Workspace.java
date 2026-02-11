@@ -24,7 +24,7 @@ public class Workspace {
     }
 
     public Workspace(String name) {
-        this.name = name;
+        this.name = name.strip();
     }
 
     public UUID getId() {
