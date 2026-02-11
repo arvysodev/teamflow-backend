@@ -32,7 +32,7 @@ public class WorkspaceController {
     }
 
     @GetMapping("/{id}")
-    public WorkspaceResponse getWorkspaceById(UUID id) {
+    public WorkspaceResponse getWorkspaceById(@PathVariable UUID id) {
         Workspace ws = workspaceService.getWorkspaceById(id);
         return workspaceMapper.toResponse(ws);
     }
@@ -41,6 +41,13 @@ public class WorkspaceController {
     public Page<WorkspaceResponse> getWorkspaces(Pageable pageable) {
         return workspaceService
                 .getWorkspaces(pageable)
+                .map(workspaceMapper::toResponse);
+    }
+
+    @GetMapping("/closed")
+    public Page<WorkspaceResponse> getClosedWorkspaces(Pageable pageable) {
+        return workspaceService
+                .getClosedWorkspaces(pageable)
                 .map(workspaceMapper::toResponse);
     }
 
@@ -54,8 +61,14 @@ public class WorkspaceController {
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/{id}")
-    public void deleteWorkspace(@PathVariable UUID id) {
-        workspaceService.deleteWorkspace(id);
+    @PostMapping("/{id}/close")
+    public void closeWorkplace(@PathVariable UUID id) {
+        workspaceService.closeWorkspace(id);
+    }
+
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PostMapping("/{id}/restore")
+    public void restoreWorkspace(@PathVariable UUID id) {
+        workspaceService.restoreWorkspace(id);
     }
 }

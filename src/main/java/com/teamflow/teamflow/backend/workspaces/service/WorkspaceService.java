@@ -4,6 +4,7 @@ import com.teamflow.teamflow.backend.common.errors.BadRequestException;
 import com.teamflow.teamflow.backend.common.errors.ConflictException;
 import com.teamflow.teamflow.backend.common.errors.NotFoundException;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
+import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceStatus;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,21 +27,28 @@ public class WorkspaceService {
             throw new BadRequestException("Workspace name must not be blank.");
         }
 
-        if (workspaceRepository.existsByName(name)) {
+        String normalized = name.strip();
+
+        if (workspaceRepository.existsByName(normalized)) {
             throw new ConflictException("Workspace with this name already exists.");
         }
 
-        Workspace workspace = new Workspace(name);
-        return workspaceRepository.save(workspace);
+        return workspaceRepository.save(new Workspace(normalized));
     }
 
+    @Transactional(readOnly = true)
     public Workspace getWorkspaceById(UUID id) {
-        return workspaceRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Workspace not found."));
+        return requireWorkspace(id);
     }
 
+    @Transactional(readOnly = true)
     public Page<Workspace> getWorkspaces(Pageable pageable) {
-        return workspaceRepository.findAll(pageable);
+        return workspaceRepository.findByStatus(WorkspaceStatus.ACTIVE, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Workspace> getClosedWorkspaces(Pageable pageable) {
+        return workspaceRepository.findByStatus(WorkspaceStatus.CLOSED, pageable);
     }
 
     @Transactional
@@ -62,9 +70,29 @@ public class WorkspaceService {
     }
 
     @Transactional
-    public void deleteWorkspace(UUID id) {
-        Workspace ws = workspaceRepository.findById(id)
+    public void closeWorkspace(UUID id) {
+        Workspace ws = requireWorkspace(id);
+
+        if (ws.getStatus() == WorkspaceStatus.CLOSED) {
+            throw new ConflictException("Workspace is already closed.");
+        }
+
+        ws.close();
+    }
+
+    @Transactional
+    public void restoreWorkspace(UUID id) {
+        Workspace ws = requireWorkspace(id);
+
+        if (ws.getStatus() == WorkspaceStatus.ACTIVE) {
+            throw new ConflictException("Workspace is already active.");
+        }
+
+        ws.restore();
+    }
+
+    private Workspace requireWorkspace(UUID id) {
+        return workspaceRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Workspace not found."));
-        workspaceRepository.delete(ws);
     }
 }
