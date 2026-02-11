@@ -43,4 +43,19 @@ public class WorkspaceController {
                 .getWorkspaces(pageable)
                 .map(workspaceMapper::toResponse);
     }
+
+    @PatchMapping("/{id}")
+    public WorkspaceResponse renameWorkspace(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateWorkspaceRequest request
+    ) {
+        Workspace ws = workspaceService.renameWorkspace(id, request.name());
+        return workspaceMapper.toResponse(ws);
+    }
+
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @DeleteMapping("/{id}")
+    public void deleteWorkspace(@PathVariable UUID id) {
+        workspaceService.deleteWorkspace(id);
+    }
 }

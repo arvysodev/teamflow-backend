@@ -35,6 +35,10 @@ public class Workspace {
         return name;
     }
 
+    public void rename(String newName) {
+        this.name = newName == null ? null : newName.strip();
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }

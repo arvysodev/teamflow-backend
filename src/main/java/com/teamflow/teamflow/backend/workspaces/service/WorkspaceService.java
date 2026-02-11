@@ -42,4 +42,29 @@ public class WorkspaceService {
     public Page<Workspace> getWorkspaces(Pageable pageable) {
         return workspaceRepository.findAll(pageable);
     }
+
+    @Transactional
+    public Workspace renameWorkspace(UUID id, String newName) {
+        if (newName == null || newName.isBlank()) {
+            throw new BadRequestException("Workspace name must not be blank.");
+        }
+
+        String normalized = newName.strip();
+
+        if (workspaceRepository.existsByNameAndIdNot(normalized, id)) {
+            throw new ConflictException("Workspace with this name already exists.");
+        }
+
+        Workspace ws = getWorkspaceById(id);
+        ws.rename(normalized);
+
+        return ws;
+    }
+
+    @Transactional
+    public void deleteWorkspace(UUID id) {
+        Workspace ws = workspaceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Workspace not found."));
+        workspaceRepository.delete(ws);
+    }
 }
