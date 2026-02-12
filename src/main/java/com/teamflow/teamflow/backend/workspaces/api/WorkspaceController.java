@@ -1,13 +1,17 @@
 package com.teamflow.teamflow.backend.workspaces.api;
 
+import com.teamflow.teamflow.backend.common.api.PageResponse;
+import com.teamflow.teamflow.backend.common.api.PageResponses;
 import com.teamflow.teamflow.backend.workspaces.api.mapper.WorkspaceMapper;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
 import com.teamflow.teamflow.backend.workspaces.service.WorkspaceService;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.data.web.SortDefault;
+import org.springframework.data.domain.Sort;
 
 import java.util.UUID;
 
@@ -38,17 +42,19 @@ public class WorkspaceController {
     }
 
     @GetMapping
-    public Page<WorkspaceResponse> getWorkspaces(Pageable pageable) {
-        return workspaceService
-                .getWorkspaces(pageable)
-                .map(workspaceMapper::toResponse);
+    public PageResponse<WorkspaceResponse> getWorkspaces(
+            @SortDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        var page = workspaceService.getWorkspaces(pageable);
+        return PageResponses.of(page, workspaceMapper::toResponse);
     }
 
     @GetMapping("/closed")
-    public Page<WorkspaceResponse> getClosedWorkspaces(Pageable pageable) {
-        return workspaceService
-                .getClosedWorkspaces(pageable)
-                .map(workspaceMapper::toResponse);
+    public PageResponse<WorkspaceResponse> getClosedWorkspaces(
+            @SortDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        var page = workspaceService.getClosedWorkspaces(pageable);
+        return PageResponses.of(page, workspaceMapper::toResponse);
     }
 
     @PatchMapping("/{id}")
