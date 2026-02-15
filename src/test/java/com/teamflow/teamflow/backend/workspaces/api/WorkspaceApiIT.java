@@ -2,6 +2,8 @@ package com.teamflow.teamflow.backend.workspaces.api;
 
 import com.jayway.jsonpath.JsonPath;
 import com.teamflow.teamflow.backend.support.IntegrationTestBase;
+import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,6 +23,14 @@ class WorkspaceApiIT extends IntegrationTestBase {
 
     @Autowired
     MockMvc mockMvc;
+
+    @Autowired
+    private WorkspaceRepository workspaceRepository;
+
+    @BeforeEach
+    void cleanDb() {
+        workspaceRepository.deleteAll();
+    }
 
     @Test
     void createWorkspace_shouldReturn201_andResponseBody() throws Exception {

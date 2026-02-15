@@ -2,10 +2,15 @@ package com.teamflow.teamflow.backend.workspaces.domain;
 
 import com.teamflow.teamflow.backend.common.errors.ConflictException;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "workspaces")
 public class Workspace {
@@ -28,27 +33,8 @@ public class Workspace {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    protected Workspace() {
-    }
-
     public Workspace(String name) {
         this.name = name.strip();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public WorkspaceStatus getStatus() {
-        return status;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
     }
 
     public void close() {
@@ -65,10 +51,6 @@ public class Workspace {
         }
 
         this.name = newName == null ? null : newName.strip();
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
     }
 
     @PrePersist

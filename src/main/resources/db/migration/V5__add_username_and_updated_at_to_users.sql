@@ -1,0 +1,7 @@
+ALTER TABLE users
+    ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE users
+    ADD COLUMN username VARCHAR(50) NOT NULL;
+
+CREATE UNIQUE INDEX users_username_uq ON users (username);
