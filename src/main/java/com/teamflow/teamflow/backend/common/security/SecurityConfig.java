@@ -15,21 +15,24 @@ public class SecurityConfig {
         http
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // temporarily open
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/actuator/**",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html"
-                        ).permitAll()
-                        .requestMatchers("/api/v1/**").permitAll()
-                        .anyRequest().denyAll()
-                )
-
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
+
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                        "/actuator/**",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html"
+                ).permitAll()
+
+                .requestMatchers("/api/v1/auth/**").permitAll()
+
+                // TODO (next security step): change to .requestMatchers("/api/v1/**").authenticated()
+                .requestMatchers("/api/v1/**").permitAll()
+
+                .anyRequest().denyAll()
+        );
 
         return http.build();
     }

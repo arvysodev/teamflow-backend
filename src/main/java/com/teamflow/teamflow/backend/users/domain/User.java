@@ -51,6 +51,32 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "email_verified_at")
+    private LocalDateTime emailVerifiedAt;
+
+    @Column(name = "email_verification_token_hash")
+    private String emailVerificationTokenHash;
+
+    @Column(name = "email_verification_token_expires_at")
+    private LocalDateTime emailVerificationTokenExpiresAt;
+
+    public boolean isEmailVerified() {
+        return emailVerifiedAt != null;
+    }
+
+    public void startEmailVerification(String tokenHash, LocalDateTime expiresAt) {
+        this.emailVerificationTokenHash = tokenHash;
+        this.emailVerificationTokenExpiresAt = expiresAt;
+    }
+
+    public void verifyEmail(LocalDateTime verifiedAt) {
+        this.emailVerifiedAt = verifiedAt;
+        this.status = UserStatus.ACTIVE;
+
+        this.emailVerificationTokenHash = null;
+        this.emailVerificationTokenExpiresAt = null;
+    }
+
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();
