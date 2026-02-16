@@ -6,15 +6,18 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
 public abstract class IntegrationTestBase {
 
-    @Container
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine")
                     .withDatabaseName("teamflow")
                     .withUsername("teamflow")
-                    .withPassword("teamflow");
+                    .withPassword("teamflow")
+                    .withStartupAttempts(3);
+
+    static {
+        POSTGRES.start();
+    }
 
     @DynamicPropertySource
     static void registerDataSourceProps(DynamicPropertyRegistry registry) {
