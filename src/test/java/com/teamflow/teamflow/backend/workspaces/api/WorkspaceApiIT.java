@@ -11,6 +11,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import com.teamflow.teamflow.backend.auth.AuthTestHelper;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.util.UUID;
 
@@ -27,9 +30,19 @@ class WorkspaceApiIT extends IntegrationTestBase {
     @Autowired
     private WorkspaceRepository workspaceRepository;
 
+    @Autowired
+    private AuthTestHelper authTestHelper;
+
+    private String bearer;
+
     @BeforeEach
-    void cleanDb() {
+    void cleanDb() throws Exception {
         workspaceRepository.deleteAll();
+        bearer = authTestHelper.obtainBearerToken();
+    }
+
+    private MockHttpServletRequestBuilder authorized(MockHttpServletRequestBuilder rb) {
+        return rb.header(HttpHeaders.AUTHORIZATION, bearer);
     }
 
     @Test
@@ -39,7 +52,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                        post("/api/v1/workspaces")
+                        authorized(post("/api/v1/workspaces"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -60,7 +73,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                        post("/api/v1/workspaces")
+                        authorized(post("/api/v1/workspaces"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -79,7 +92,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                        post("/api/v1/workspaces")
+                        authorized(post("/api/v1/workspaces"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -94,7 +107,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
 
 
         mockMvc.perform(
-                        post("/api/v1/workspaces")
+                        authorized(post("/api/v1/workspaces"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -111,7 +124,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
         createGetTestData();
 
         mockMvc.perform(
-                        get("/api/v1/workspaces")
+                        authorized(get("/api/v1/workspaces"))
                                 .param("page", "0")
                                 .param("size", "100")
                                 .accept(MediaType.APPLICATION_JSON)
@@ -125,11 +138,29 @@ class WorkspaceApiIT extends IntegrationTestBase {
     }
 
     @Test
+    void getWorkspaces_whenNotAuthorized_shouldReturn401_andProblemDetail() throws Exception {
+        createGetTestData();
+
+        mockMvc.perform(
+                        get("/api/v1/workspaces")
+                                .param("page", "0")
+                                .param("size", "100")
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.title").value("Unauthorized"))
+                .andExpect(jsonPath("$.detail").value("Authentication is required to access this resource."));
+
+    }
+
+    @Test
     void getWorkspaceById_shouldReturn200() throws Exception{
         UUID id = createWorkspaceAndReturnId("Test");
 
         mockMvc.perform(
-                        get("/api/v1/workspaces/{id}", id)
+                        authorized(get("/api/v1/workspaces/{id}", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
@@ -143,7 +174,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(
-                        get("/api/v1/workspaces/{id}", id)
+                        authorized(get("/api/v1/workspaces/{id}", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isNotFound())
@@ -161,7 +192,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                        patch("/api/v1/workspaces/{id}", id)
+                        authorized(patch("/api/v1/workspaces/{id}", id))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -183,7 +214,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                        patch("/api/v1/workspaces/{id}", id)
+                        authorized(patch("/api/v1/workspaces/{id}", id))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -202,7 +233,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                        post("/api/v1/workspaces")
+                        authorized(post("/api/v1/workspaces"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -210,7 +241,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 .andExpect(status().isCreated());
 
         mockMvc.perform(
-                        patch("/api/v1/workspaces/{id}", id)
+                        authorized(patch("/api/v1/workspaces/{id}", id))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -230,13 +261,13 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                        post("/api/v1/workspaces/{id}/close", id)
+                        authorized(post("/api/v1/workspaces/{id}/close", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(
-                        patch("/api/v1/workspaces/{id}", id)
+                        authorized(patch("/api/v1/workspaces/{id}", id))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -253,13 +284,13 @@ class WorkspaceApiIT extends IntegrationTestBase {
         UUID id = createWorkspaceAndReturnId("Test");
 
         mockMvc.perform(
-                        post("/api/v1/workspaces/{id}/close", id)
+                        authorized(post("/api/v1/workspaces/{id}/close", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(
-                        get("/api/v1/workspaces/{id}", id)
+                        authorized(get("/api/v1/workspaces/{id}", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(jsonPath("$.status").value("CLOSED"));
@@ -270,13 +301,13 @@ class WorkspaceApiIT extends IntegrationTestBase {
         UUID id = createWorkspaceAndReturnId("Test");
 
         mockMvc.perform(
-                        post("/api/v1/workspaces/{id}/close", id)
+                        authorized(post("/api/v1/workspaces/{id}/close", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(
-                        post("/api/v1/workspaces/{id}/close", id)
+                        authorized(post("/api/v1/workspaces/{id}/close", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isConflict())
@@ -291,7 +322,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(
-                        post("/api/v1/workspaces/{id}/close", id)
+                        authorized(post("/api/v1/workspaces/{id}/close", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isNotFound())
@@ -306,18 +337,18 @@ class WorkspaceApiIT extends IntegrationTestBase {
         UUID id = createWorkspaceAndReturnId("Test");
 
         mockMvc.perform(
-                        post("/api/v1/workspaces/{id}/close", id)
+                        authorized(post("/api/v1/workspaces/{id}/close", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(
-                        post("/api/v1/workspaces/{id}/restore", id)
+                        authorized(post("/api/v1/workspaces/{id}/restore", id))
                 )
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(
-                        get("/api/v1/workspaces/{id}", id)
+                        authorized(get("/api/v1/workspaces/{id}", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
@@ -328,13 +359,13 @@ class WorkspaceApiIT extends IntegrationTestBase {
         UUID id = createWorkspaceAndReturnId("Test");
 
         mockMvc.perform(
-                        get("/api/v1/workspaces/{id}", id)
+                        authorized(get("/api/v1/workspaces/{id}", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
 
         mockMvc.perform(
-                        post("/api/v1/workspaces/{id}/restore", id)
+                        authorized(post("/api/v1/workspaces/{id}/restore", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isConflict())
@@ -349,7 +380,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
         UUID id = UUID.randomUUID();
 
         mockMvc.perform(
-                        post("/api/v1/workspaces/{id}/restore", id)
+                        authorized(post("/api/v1/workspaces/{id}/restore", id))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isNotFound())
@@ -365,7 +396,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """.formatted(name);
 
         MvcResult result = mockMvc.perform(
-                        post("/api/v1/workspaces")
+                        authorized(post("/api/v1/workspaces"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -384,7 +415,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                post("/api/v1/workspaces")
+                authorized(post("/api/v1/workspaces"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
                         .content(body1)
@@ -396,7 +427,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                post("/api/v1/workspaces")
+                authorized(post("/api/v1/workspaces"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
                         .content(body2)
@@ -408,7 +439,7 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 """;
 
         mockMvc.perform(
-                post("/api/v1/workspaces")
+                authorized(post("/api/v1/workspaces"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
                         .content(body3)

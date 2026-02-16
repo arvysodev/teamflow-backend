@@ -1,8 +1,6 @@
 package com.teamflow.teamflow.backend.auth.api;
 
-import com.teamflow.teamflow.backend.auth.api.dto.RegisterRequest;
-import com.teamflow.teamflow.backend.auth.api.dto.RegisterResponse;
-import com.teamflow.teamflow.backend.auth.api.dto.VerifyEmailRequest;
+import com.teamflow.teamflow.backend.auth.api.dto.*;
 import com.teamflow.teamflow.backend.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -34,5 +32,10 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void verifyEmail(@Valid @RequestBody VerifyEmailRequest req) {
         authService.verifyEmail(req.token());
+    }
+
+    @PostMapping("/login")
+    public AuthResponse login(@Valid @RequestBody LoginRequest req) {
+        return authService.login(req.email(), req.password());
     }
 }

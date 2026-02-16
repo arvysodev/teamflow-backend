@@ -1,7 +1,9 @@
 package com.teamflow.teamflow.backend.auth.service;
 
+import com.teamflow.teamflow.backend.auth.api.dto.AuthResponse;
 import com.teamflow.teamflow.backend.auth.notify.VerificationNotifier;
 import com.teamflow.teamflow.backend.auth.security.EmailVerificationTokenGenerator;
+import com.teamflow.teamflow.backend.auth.security.JwtService;
 import com.teamflow.teamflow.backend.auth.security.TokenHasher;
 import com.teamflow.teamflow.backend.common.errors.BadRequestException;
 import com.teamflow.teamflow.backend.common.errors.ConflictException;
@@ -26,25 +28,28 @@ public class AuthService {
     private final EmailVerificationTokenGenerator tokenGenerator;
     private final TokenHasher tokenHasher;
     private final VerificationNotifier verificationNotifier;
+    private final JwtService jwtService;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             EmailVerificationTokenGenerator tokenGenerator,
             TokenHasher tokenHasher,
-            VerificationNotifier verificationNotifier
+            VerificationNotifier verificationNotifier,
+            JwtService jwtService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenGenerator = tokenGenerator;
         this.tokenHasher = tokenHasher;
         this.verificationNotifier = verificationNotifier;
+        this.jwtService = jwtService;
     }
 
     @Transactional
     public RegistrationResult register(String username, String email, String rawPassword) {
         String normalizedEmail = email.toLowerCase().strip();
-        String normalizedUsername = username.strip();
+        String normalizedUsername = username.strip().toLowerCase();
 
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new ConflictException("Email is already taken.");
@@ -92,6 +97,27 @@ public class AuthService {
 
         user.verifyEmail(LocalDateTime.now());
         userRepository.save(user);
+    }
+
+    @Transactional
+    public AuthResponse login(String email, String rawPassword) {
+        String normalizedEmail = email.strip().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new BadRequestException("Invalid credentials."));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            if (user.getStatus() == UserStatus.PENDING) {
+                throw new ConflictException("Email is not verified.");
+            }
+            throw new ConflictException("User is disabled.");
+        }
+
+        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+            throw new BadRequestException("Invalid credentials.");
+        }
+
+        String accessToken = jwtService.generateAccessToken(user);
+        return new AuthResponse(accessToken, "Bearer", jwtService.getTtlSeconds());
     }
 
     public record RegistrationResult(UUID userId, UserStatus status) {}

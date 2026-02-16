@@ -15,7 +15,7 @@ import java.util.UUID;
 public class User {
 
     public User(String username, String email, String passwordHash) {
-        this.username = username.strip();
+        this.username = username.strip().toLowerCase();
         this.email = email.toLowerCase().strip();
         this.passwordHash = passwordHash;
 
