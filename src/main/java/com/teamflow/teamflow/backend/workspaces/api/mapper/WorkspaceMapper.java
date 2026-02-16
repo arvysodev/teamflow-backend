@@ -3,7 +3,6 @@ package com.teamflow.teamflow.backend.workspaces.api.mapper;
 import com.teamflow.teamflow.backend.workspaces.api.WorkspaceResponse;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface WorkspaceMapper {

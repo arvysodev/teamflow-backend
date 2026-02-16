@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 public class AuthTestHelper {
 
-    final MockMvc mockMvc;
+    private final MockMvc mockMvc;
     private final TestVerificationNotifier notifier;
 
     public AuthTestHelper(MockMvc mockMvc, TestVerificationNotifier notifier) {

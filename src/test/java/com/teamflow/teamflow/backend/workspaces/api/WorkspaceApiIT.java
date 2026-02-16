@@ -1,6 +1,7 @@
 package com.teamflow.teamflow.backend.workspaces.api;
 
 import com.jayway.jsonpath.JsonPath;
+import com.teamflow.teamflow.backend.auth.TestVerificationNotifier;
 import com.teamflow.teamflow.backend.support.IntegrationTestBase;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,16 +29,19 @@ class WorkspaceApiIT extends IntegrationTestBase {
     MockMvc mockMvc;
 
     @Autowired
-    private WorkspaceRepository workspaceRepository;
+    TestVerificationNotifier notifier;
 
     @Autowired
-    private AuthTestHelper authTestHelper;
+    private WorkspaceRepository workspaceRepository;
 
+    private AuthTestHelper authTestHelper;
     private String bearer;
 
     @BeforeEach
     void cleanDb() throws Exception {
         workspaceRepository.deleteAll();
+
+        authTestHelper = new AuthTestHelper(mockMvc, notifier);
         bearer = authTestHelper.obtainBearerToken();
     }
 
