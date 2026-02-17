@@ -10,7 +10,6 @@ import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -94,12 +93,15 @@ public class WorkspaceServiceTest {
 
     @Test
     void getWorkspaces_shouldReturnActivePageFromRepository() {
+        UUID userId = UUID.randomUUID();
         Pageable pageable = PageRequest.of(0, 10);
         Workspace ws1 = new Workspace("A");
         Workspace ws2 = new Workspace("B");
         Page<Workspace> repoPage = new PageImpl<>(List.of(ws1, ws2), pageable, 2);
 
-        when(workspaceRepository.findByStatus(WorkspaceStatus.ACTIVE, pageable))
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findAllByMemberAndStatus(userId, WorkspaceStatus.ACTIVE, pageable))
                 .thenReturn(repoPage);
 
         Page<Workspace> result = workspaceService.getWorkspaces(pageable);
@@ -108,12 +110,14 @@ public class WorkspaceServiceTest {
         assertEquals(2, result.getTotalElements());
         assertEquals(2, result.getContent().size());
 
-        verify(workspaceRepository).findByStatus(WorkspaceStatus.ACTIVE, pageable);
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findAllByMemberAndStatus(userId, WorkspaceStatus.ACTIVE, pageable);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
     void getClosedWorkspaces_shouldReturnClosedPageFromRepository() {
+        UUID userId = UUID.randomUUID();
         Pageable pageable = PageRequest.of(0, 10);
         Workspace ws1 = new Workspace("A");
         Workspace ws2 = new Workspace("B");
@@ -121,7 +125,9 @@ public class WorkspaceServiceTest {
         ws2.close();
         Page<Workspace> repoPage = new PageImpl<>(List.of(ws1, ws2), pageable, 2);
 
-        when(workspaceRepository.findByStatus(WorkspaceStatus.CLOSED, pageable))
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findAllByMemberAndStatus(userId, WorkspaceStatus.CLOSED, pageable))
                 .thenReturn(repoPage);
 
         Page<Workspace> result = workspaceService.getClosedWorkspaces(pageable);
@@ -130,29 +136,37 @@ public class WorkspaceServiceTest {
         assertEquals(2, result.getTotalElements());
         assertEquals(2, result.getContent().size());
 
-        verify(workspaceRepository).findByStatus(WorkspaceStatus.CLOSED, pageable);
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findAllByMemberAndStatus(userId, WorkspaceStatus.CLOSED, pageable);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
     void getWorkspaceById_whenExists_shouldReturnWorkspace() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Workspace ws = new Workspace("Test");
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.of(ws));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
 
         Workspace found = workspaceService.getWorkspaceById(id);
 
         assertSame(ws, found);
-        verify(workspaceRepository).findById(id);
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findByIdAndMember(id, userId);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
     void getWorkspaceById_whenMissing_shouldThrowNotFound() {
+        UUID userId = UUID.randomUUID();
         UUID id = UUID.randomUUID();
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.empty());
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.empty());
 
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
@@ -160,17 +174,21 @@ public class WorkspaceServiceTest {
         );
         assertEquals("Workspace not found.", exception.getMessage());
 
-        verify(workspaceRepository).findById(id);
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findByIdAndMember(id, userId);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
     void renameWorkspace_shouldSucceed() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Workspace ws = new Workspace("Before");
         String newName = "  After  ";
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.of(ws));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
         when(workspaceRepository.existsByNameAndIdNot("After", id)).thenReturn(false);
 
         Workspace result = workspaceService.renameWorkspace(id, newName);
@@ -178,10 +196,11 @@ public class WorkspaceServiceTest {
         assertSame(ws, result);
         assertEquals("After", result.getName());
 
-        verify(workspaceRepository).findById(id);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findByIdAndMember(id, userId);
         verify(workspaceRepository).existsByNameAndIdNot("After", id);
         verify(workspaceRepository, never()).save(any());
-        verifyNoMoreInteractions(workspaceRepository);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
@@ -220,11 +239,14 @@ public class WorkspaceServiceTest {
     @Test
     void renameWorkspace_whenWorkspaceClosed_shouldThrowConflict() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Workspace ws = new Workspace("Before");
         ws.close();
         String newName = " After ";
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.of(ws));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
         when(workspaceRepository.existsByNameAndIdNot("After", id)).thenReturn(false);
 
         ConflictException exception = assertThrows(
@@ -234,19 +256,23 @@ public class WorkspaceServiceTest {
 
         assertEquals("Closed workspace cannot be renamed.", exception.getMessage());
 
+        verify(currentUserProvider).getCurrentUserId();
         verify(workspaceRepository).existsByNameAndIdNot("After", id);
-        verify(workspaceRepository).findById(id);
+        verify(workspaceRepository).findByIdAndMember(id, userId);
         verify(workspaceRepository, never()).save(any());
-        verifyNoMoreInteractions(workspaceRepository);
+        verifyNoMoreInteractions(workspaceRepository,currentUserProvider);
     }
 
     @Test
     void renameWorkspace_whenWorkspaceNotFound_shouldThrowNotFound() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         String newName = "Test";
 
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
         when(workspaceRepository.existsByNameAndIdNot(newName, id)).thenReturn(false);
-        when(workspaceRepository.findById(id)).thenReturn(Optional.empty());
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.empty());
 
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
@@ -255,33 +281,41 @@ public class WorkspaceServiceTest {
 
         assertEquals("Workspace not found.", exception.getMessage());
 
+        verify(currentUserProvider).getCurrentUserId();
         verify(workspaceRepository, never()).save(any());
         verify(workspaceRepository).existsByNameAndIdNot(newName, id);
-        verify(workspaceRepository).findById(id);
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(workspaceRepository).findByIdAndMember(id, userId);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
     void closeWorkspace_shouldSucceed() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Workspace ws = new Workspace("Test");
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.of(ws));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
 
         workspaceService.closeWorkspace(id);
         assertEquals(WorkspaceStatus.CLOSED, ws.getStatus());
 
-        verify(workspaceRepository).findById(id);
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findByIdAndMember(id, userId);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
     void closeWorkspace_whenAlreadyClosed_shouldThrowConflict() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Workspace ws = new Workspace("Test");
         ws.close();
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.of(ws));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
 
         ConflictException exception = assertThrows(
                 ConflictException.class,
@@ -290,15 +324,19 @@ public class WorkspaceServiceTest {
 
         assertEquals("Workspace is already closed.", exception.getMessage());
 
-        verify(workspaceRepository).findById(id);
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findByIdAndMember(id ,userId);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
     void closeWorkspace_whenWorkspaceNotFound_shouldThrowNotFound() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.empty());
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.empty());
 
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
@@ -307,32 +345,40 @@ public class WorkspaceServiceTest {
 
         assertEquals("Workspace not found.", exception.getMessage());
 
-        verify(workspaceRepository).findById(id);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findByIdAndMember(id, userId);
         verifyNoMoreInteractions(workspaceRepository);
     }
 
     @Test
     void restoreWorkspace_shouldSucceed() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Workspace ws = new Workspace("Test");
         ws.close();
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.of(ws));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
 
         workspaceService.restoreWorkspace(id);
         assertEquals(WorkspaceStatus.ACTIVE, ws.getStatus());
 
-        verify(workspaceRepository).findById(id);
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findByIdAndMember(id, userId);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
     void restoreWorkspace_whenAlreadyActive_shouldThrowConflict() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Workspace ws = new Workspace("Test");
         ws.restore();
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.of(ws));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
 
         ConflictException exception = assertThrows(
                 ConflictException.class,
@@ -341,15 +387,19 @@ public class WorkspaceServiceTest {
 
         assertEquals("Workspace is already active.", exception.getMessage());
 
-        verify(workspaceRepository).findById(id);
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findByIdAndMember(id, userId);
+        verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
     @Test
     void restoreWorkspace_whenWorkspaceNotFound_shouldThrowNotFound() {
         UUID id = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
 
-        when(workspaceRepository.findById(id)).thenReturn(Optional.empty());
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
+        when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.empty());
 
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
@@ -358,7 +408,8 @@ public class WorkspaceServiceTest {
 
         assertEquals("Workspace not found.", exception.getMessage());
 
-        verify(workspaceRepository).findById(id);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceRepository).findByIdAndMember(id, userId);
         verifyNoMoreInteractions(workspaceRepository);
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -55,17 +56,21 @@ public class WorkspaceService {
 
     @Transactional(readOnly = true)
     public Workspace getWorkspaceById(UUID id) {
-        return requireWorkspace(id);
+        UUID userId = currentUserProvider.getCurrentUserId();
+        return workspaceRepository.findByIdAndMember(id, userId)
+                .orElseThrow(() -> new NotFoundException("Workspace not found."));
     }
 
     @Transactional(readOnly = true)
     public Page<Workspace> getWorkspaces(Pageable pageable) {
-        return workspaceRepository.findByStatus(WorkspaceStatus.ACTIVE, pageable);
+        UUID userId = currentUserProvider.getCurrentUserId();
+        return workspaceRepository.findAllByMemberAndStatus(userId, WorkspaceStatus.ACTIVE, pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<Workspace> getClosedWorkspaces(Pageable pageable) {
-        return workspaceRepository.findByStatus(WorkspaceStatus.CLOSED, pageable);
+        UUID userId = currentUserProvider.getCurrentUserId();
+        return workspaceRepository.findAllByMemberAndStatus(userId, WorkspaceStatus.CLOSED, pageable);
     }
 
     @Transactional
@@ -88,7 +93,7 @@ public class WorkspaceService {
 
     @Transactional
     public void closeWorkspace(UUID id) {
-        Workspace ws = requireWorkspace(id);
+        Workspace ws = getWorkspaceById(id);
 
         if (ws.getStatus() == WorkspaceStatus.CLOSED) {
             throw new ConflictException("Workspace is already closed.");
@@ -99,17 +104,12 @@ public class WorkspaceService {
 
     @Transactional
     public void restoreWorkspace(UUID id) {
-        Workspace ws = requireWorkspace(id);
+        Workspace ws = getWorkspaceById(id);
 
         if (ws.getStatus() == WorkspaceStatus.ACTIVE) {
             throw new ConflictException("Workspace is already active.");
         }
 
         ws.restore();
-    }
-
-    private Workspace requireWorkspace(UUID id) {
-        return workspaceRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Workspace not found."));
     }
 }
