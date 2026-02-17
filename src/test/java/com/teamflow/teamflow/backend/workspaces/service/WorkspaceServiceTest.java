@@ -60,7 +60,7 @@ public class WorkspaceServiceTest {
         verify(workspaceRepository).save(any(Workspace.class));
         verify(currentUserProvider).getCurrentUserId();
         verify(workspaceMemberRepository).save(any());
-        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+        verifyNoMoreInteractions(workspaceRepository, workspaceMemberRepository, currentUserProvider);
     }
 
     @Test
