@@ -3,6 +3,9 @@ package com.teamflow.teamflow.backend.workspaces.api;
 import com.jayway.jsonpath.JsonPath;
 import com.teamflow.teamflow.backend.auth.TestVerificationNotifier;
 import com.teamflow.teamflow.backend.support.IntegrationTestBase;
+import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberId;
+import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberRole;
+import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +18,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import com.teamflow.teamflow.backend.auth.AuthTestHelper;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.UUID;
 
@@ -34,11 +38,15 @@ class WorkspaceApiIT extends IntegrationTestBase {
     @Autowired
     private WorkspaceRepository workspaceRepository;
 
+    @Autowired
+    WorkspaceMemberRepository workspaceMemberRepository;
+
     private AuthTestHelper authTestHelper;
     private String bearer;
 
     @BeforeEach
     void cleanDb() throws Exception {
+        workspaceMemberRepository.deleteAll();
         workspaceRepository.deleteAll();
 
         authTestHelper = new AuthTestHelper(mockMvc, notifier);
@@ -68,6 +76,28 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty())
                 .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+    }
+
+    @Test
+    void createWorkspace_shouldCreateOwnerMembership() throws Exception {
+        UUID workspaceId = createWorkspaceAndReturnId("Test");
+
+        var meResult = mockMvc.perform(
+                        authorized(get("/api/v1/users/me"))
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String meJson = meResult.getResponse().getContentAsString();
+        String userId = JsonPath.read(meJson, "$.id");
+
+        var memberId = new WorkspaceMemberId(workspaceId, UUID.fromString(userId));
+
+        var member = workspaceMemberRepository.findById(memberId)
+                .orElseThrow();
+
+        assertEquals(WorkspaceMemberRole.OWNER, member.getRole());
     }
 
     @Test

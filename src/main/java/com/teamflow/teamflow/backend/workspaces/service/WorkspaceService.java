@@ -3,8 +3,11 @@ package com.teamflow.teamflow.backend.workspaces.service;
 import com.teamflow.teamflow.backend.common.errors.BadRequestException;
 import com.teamflow.teamflow.backend.common.errors.ConflictException;
 import com.teamflow.teamflow.backend.common.errors.NotFoundException;
+import com.teamflow.teamflow.backend.common.security.CurrentUserProvider;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
+import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMember;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceStatus;
+import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,9 +19,17 @@ import java.util.UUID;
 @Service
 public class WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
+    private final CurrentUserProvider currentUserProvider;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
 
-    public WorkspaceService(WorkspaceRepository workspaceRepository) {
+    public WorkspaceService(
+            WorkspaceRepository workspaceRepository,
+            CurrentUserProvider currentUserProvider,
+            WorkspaceMemberRepository workspaceMemberRepository
+    ) {
         this.workspaceRepository = workspaceRepository;
+        this.currentUserProvider = currentUserProvider;
+        this.workspaceMemberRepository = workspaceMemberRepository;
     }
 
     @Transactional
@@ -33,7 +44,13 @@ public class WorkspaceService {
             throw new ConflictException("Workspace with this name already exists.");
         }
 
-        return workspaceRepository.save(new Workspace(normalized));
+        Workspace saved = workspaceRepository.save(new Workspace(normalized));
+        UUID userId = currentUserProvider.getCurrentUserId();
+        WorkspaceMember member = WorkspaceMember.owner(saved.getId(), userId);
+
+        workspaceMemberRepository.save(member);
+
+        return saved;
     }
 
     @Transactional(readOnly = true)

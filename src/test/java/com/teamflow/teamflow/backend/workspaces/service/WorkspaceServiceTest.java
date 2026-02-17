@@ -3,8 +3,10 @@ package com.teamflow.teamflow.backend.workspaces.service;
 import com.teamflow.teamflow.backend.common.errors.BadRequestException;
 import com.teamflow.teamflow.backend.common.errors.ConflictException;
 import com.teamflow.teamflow.backend.common.errors.NotFoundException;
+import com.teamflow.teamflow.backend.common.security.CurrentUserProvider;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceStatus;
+import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,16 +26,26 @@ import static org.mockito.Mockito.*;
 public class WorkspaceServiceTest {
     private WorkspaceRepository workspaceRepository;
     private WorkspaceService workspaceService;
+    private WorkspaceMemberRepository workspaceMemberRepository;
+    private CurrentUserProvider currentUserProvider;
 
     @BeforeEach
     void setUp() {
-        workspaceRepository = Mockito.mock(WorkspaceRepository.class);
-        workspaceService = new WorkspaceService(workspaceRepository);
+        workspaceRepository = mock(WorkspaceRepository.class);
+        workspaceMemberRepository = mock(WorkspaceMemberRepository.class);
+        currentUserProvider = mock(CurrentUserProvider.class);
+
+        workspaceService = new WorkspaceService(workspaceRepository, currentUserProvider, workspaceMemberRepository);
+
     }
 
     @Test
     void createWorkspace_validName_savesAndReturnsWorkspace() {
         String inputName = " Test ";
+        UUID userId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+
         when(workspaceRepository.existsByName("Test")).thenReturn(false);
 
         when(workspaceRepository.save(any(Workspace.class)))
@@ -46,7 +58,9 @@ public class WorkspaceServiceTest {
 
         verify(workspaceRepository).existsByName("Test");
         verify(workspaceRepository).save(any(Workspace.class));
-        verifyNoMoreInteractions(workspaceRepository);
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).save(any());
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
     }
 
     @Test
@@ -59,7 +73,7 @@ public class WorkspaceServiceTest {
         );
         assertEquals("Workspace name must not be blank.", exception.getMessage());
 
-        verifyNoInteractions(workspaceRepository);
+        verifyNoInteractions(workspaceRepository, workspaceMemberRepository, currentUserProvider);
     }
 
     @Test
@@ -75,6 +89,7 @@ public class WorkspaceServiceTest {
 
         verify(workspaceRepository).existsByName("Test");
         verifyNoMoreInteractions(workspaceRepository);
+        verifyNoInteractions(currentUserProvider, workspaceMemberRepository);
     }
 
     @Test
