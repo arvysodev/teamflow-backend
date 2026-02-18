@@ -1,5 +1,6 @@
 package com.teamflow.teamflow.backend.auth.security;
 
+import com.teamflow.teamflow.backend.common.security.AuthenticatedUser;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -15,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 public class JwtAuthFilter extends OncePerRequestFilter {
 
@@ -46,15 +48,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = header.substring("Bearer ".length()).trim();
 
         try {
-            String userId = jwtService.extractUserId(token);
+            String userIdString = jwtService.extractUserId(token);
+            String email = jwtService.extractEmail(token);
             String role = jwtService.extractRole(token);
+
+            UUID userId = UUID.fromString(userIdString);
+
+            var principal = new AuthenticatedUser(userId, email, role);
 
             var authorities = (role == null || role.isBlank())
                     ? List.<SimpleGrantedAuthority>of()
                     : List.of(new SimpleGrantedAuthority("ROLE_" + role));
 
             var authentication = new UsernamePasswordAuthenticationToken(
-                    userId,
+                    principal,
                     null,
                     authorities
             );

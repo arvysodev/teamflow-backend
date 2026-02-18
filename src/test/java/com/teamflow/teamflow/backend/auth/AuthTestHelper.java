@@ -37,7 +37,7 @@ public class AuthTestHelper {
                 )
                 .andExpect(status().isCreated());
 
-        String verificationToken = notifier.consumeLastToken();
+        String verificationToken = notifier.consumeLastEmailVerificationToken();
 
         String verifyBody = """
                 { "token": "%s" }

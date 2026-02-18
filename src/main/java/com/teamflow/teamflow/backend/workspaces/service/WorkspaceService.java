@@ -134,5 +134,4 @@ public class WorkspaceService {
             throw new ForbiddenException("Only workspace owner can perform this action.");
         }
     }
-
 }

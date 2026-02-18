@@ -9,7 +9,7 @@ import java.util.UUID;
 @Component
 public class CurrentUserProvider {
 
-    public UUID getCurrentUserId() {
+    private AuthenticatedUser principal() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication.getPrincipal() == null) {
@@ -17,15 +17,22 @@ public class CurrentUserProvider {
         }
 
         Object principal = authentication.getPrincipal();
-
-        if (!(principal instanceof String userIdString)) {
+        if (!(principal instanceof AuthenticatedUser user)) {
             throw new IllegalStateException("Unexpected principal type.");
         }
 
-        try {
-            return UUID.fromString(userIdString);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalStateException("Invalid user ID in security context.");
-        }
+        return user;
+    }
+
+    public UUID getCurrentUserId() {
+        return principal().id();
+    }
+
+    public String getCurrentUserEmail() {
+        return principal().email();
+    }
+
+    public String getCurrentUserRole() {
+        return principal().role();
     }
 }
