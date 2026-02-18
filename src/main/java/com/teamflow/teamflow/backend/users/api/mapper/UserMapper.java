@@ -1,6 +1,6 @@
 package com.teamflow.teamflow.backend.users.api.mapper;
 
-import com.teamflow.teamflow.backend.users.api.dto.UserResponse;
+import com.teamflow.teamflow.backend.users.api.UserResponse;
 import com.teamflow.teamflow.backend.users.domain.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

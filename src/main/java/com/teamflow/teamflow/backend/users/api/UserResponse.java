@@ -1,4 +1,4 @@
-package com.teamflow.teamflow.backend.users.api.dto;
+package com.teamflow.teamflow.backend.users.api;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

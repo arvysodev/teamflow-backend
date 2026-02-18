@@ -1,6 +1,5 @@
 package com.teamflow.teamflow.backend.users.api;
 
-import com.teamflow.teamflow.backend.users.api.dto.UserResponse;
 import com.teamflow.teamflow.backend.users.api.mapper.UserMapper;
 import com.teamflow.teamflow.backend.users.domain.User;
 import com.teamflow.teamflow.backend.users.service.UserService;

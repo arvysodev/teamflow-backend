@@ -112,4 +112,10 @@ public class WorkspaceService {
 
         ws.restore();
     }
+
+    @Transactional(readOnly = true)
+    public List<WorkspaceMember> getMembers(UUID id) {
+        getWorkspaceById(id);
+        return workspaceMemberRepository.findByIdWorkspaceIdOrderByRoleAscJoinedAtAsc(id);
+    }
 }
