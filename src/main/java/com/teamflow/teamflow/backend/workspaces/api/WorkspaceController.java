@@ -3,6 +3,7 @@ package com.teamflow.teamflow.backend.workspaces.api;
 import com.teamflow.teamflow.backend.common.api.PageResponse;
 import com.teamflow.teamflow.backend.common.api.PageResponses;
 import com.teamflow.teamflow.backend.workspaces.api.mapper.WorkspaceMapper;
+import com.teamflow.teamflow.backend.workspaces.api.mapper.WorkspaceMemberMapper;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
 import com.teamflow.teamflow.backend.workspaces.service.WorkspaceService;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.web.SortDefault;
 import org.springframework.data.domain.Sort;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -21,11 +23,13 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
     private final WorkspaceMapper workspaceMapper;
+    private final WorkspaceMemberMapper workspaceMemberMapper;
 
 
-    public WorkspaceController(WorkspaceService workspaceService, WorkspaceMapper workspaceMapper) {
+    public WorkspaceController(WorkspaceService workspaceService, WorkspaceMapper workspaceMapper, WorkspaceMemberMapper workspaceMemberMapper) {
         this.workspaceService = workspaceService;
         this.workspaceMapper = workspaceMapper;
+        this.workspaceMemberMapper = workspaceMemberMapper;
     }
 
     @ResponseStatus(HttpStatus.CREATED)
@@ -76,5 +80,13 @@ public class WorkspaceController {
     @PostMapping("/{id}/restore")
     public void restoreWorkspace(@PathVariable UUID id) {
         workspaceService.restoreWorkspace(id);
+    }
+
+    @GetMapping("/{id}/members")
+    public List<WorkspaceMemberResponse> getMembers(@PathVariable UUID id) {
+        return workspaceService.getMembers(id)
+                .stream()
+                .map(workspaceMemberMapper::toResponse)
+                .toList();
     }
 }

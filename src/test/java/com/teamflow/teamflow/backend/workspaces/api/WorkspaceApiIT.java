@@ -219,6 +219,41 @@ class WorkspaceApiIT extends IntegrationTestBase {
     }
 
     @Test
+    void getMembers_shouldReturn200_andResponseBody() throws Exception {
+        UUID id = createWorkspaceAndReturnId("Test");
+
+        mockMvc.perform(
+                        authorized(get("/api/v1/workspaces/{id}/members", id))
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].userId").isNotEmpty())
+                .andExpect(jsonPath("$[0].role").value("OWNER"))
+                .andExpect(jsonPath("$[0].joinedAt").isNotEmpty());
+    }
+
+    @Test
+    void getMembers_whenUserNotMember_shouldReturn404_andProblemDetail() throws Exception {
+        UUID workspaceId = createWorkspaceAndReturnId("Test");
+
+        AuthTestHelper auth2 = new AuthTestHelper(mockMvc, notifier);
+        String bearer2 = auth2.obtainBearerToken();
+
+        mockMvc.perform(
+                        get("/api/v1/workspaces/{id}/members", workspaceId)
+                                .header(HttpHeaders.AUTHORIZATION, bearer2)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.title").value("Not Found"))
+                .andExpect(jsonPath("$.detail").value("Workspace not found."));
+    }
+
+    @Test
     void renameWorkspace_shouldReturn200_andResponseBody() throws Exception {
         UUID id = createWorkspaceAndReturnId("Test");
         String body = """
