@@ -2,10 +2,12 @@ package com.teamflow.teamflow.backend.workspaces.service;
 
 import com.teamflow.teamflow.backend.common.errors.BadRequestException;
 import com.teamflow.teamflow.backend.common.errors.ConflictException;
+import com.teamflow.teamflow.backend.common.errors.ForbiddenException;
 import com.teamflow.teamflow.backend.common.errors.NotFoundException;
 import com.teamflow.teamflow.backend.common.security.CurrentUserProvider;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMember;
+import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberRole;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceStatus;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
@@ -85,6 +87,7 @@ public class WorkspaceService {
             throw new ConflictException("Workspace with this name already exists.");
         }
 
+        requireOwner(id);
         Workspace ws = getWorkspaceById(id);
         ws.rename(normalized);
 
@@ -93,6 +96,7 @@ public class WorkspaceService {
 
     @Transactional
     public void closeWorkspace(UUID id) {
+        requireOwner(id);
         Workspace ws = getWorkspaceById(id);
 
         if (ws.getStatus() == WorkspaceStatus.CLOSED) {
@@ -104,6 +108,7 @@ public class WorkspaceService {
 
     @Transactional
     public void restoreWorkspace(UUID id) {
+        requireOwner(id);
         Workspace ws = getWorkspaceById(id);
 
         if (ws.getStatus() == WorkspaceStatus.ACTIVE) {
@@ -118,4 +123,16 @@ public class WorkspaceService {
         getWorkspaceById(id);
         return workspaceMemberRepository.findByIdWorkspaceIdOrderByRoleAscJoinedAtAsc(id);
     }
+
+    private void requireOwner(UUID workspaceId) {
+        UUID userId = currentUserProvider.getCurrentUserId();
+
+        var role = workspaceMemberRepository.findRole(workspaceId, userId)
+                .orElseThrow(() -> new NotFoundException("Workspace not found."));
+
+        if (role != WorkspaceMemberRole.OWNER) {
+            throw new ForbiddenException("Only workspace owner can perform this action.");
+        }
+    }
+
 }

@@ -2,7 +2,9 @@ package com.teamflow.teamflow.backend.workspaces.api;
 
 import com.jayway.jsonpath.JsonPath;
 import com.teamflow.teamflow.backend.auth.TestVerificationNotifier;
+import com.teamflow.teamflow.backend.auth.security.JwtService;
 import com.teamflow.teamflow.backend.support.IntegrationTestBase;
+import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMember;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberId;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberRole;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
@@ -40,6 +42,9 @@ class WorkspaceApiIT extends IntegrationTestBase {
 
     @Autowired
     WorkspaceMemberRepository workspaceMemberRepository;
+
+    @Autowired
+    JwtService jwtService;
 
     private AuthTestHelper authTestHelper;
     private String bearer;
@@ -349,6 +354,36 @@ class WorkspaceApiIT extends IntegrationTestBase {
     }
 
     @Test
+    void renameWorkspace_whenUserIsMemberButNotOwner_shouldReturn403_andProblemDetail() throws Exception {
+        UUID workspaceId = createWorkspaceAndReturnId("Before");
+
+        AuthTestHelper auth2 = new AuthTestHelper(mockMvc, notifier);
+        String accessToken2 = auth2.obtainAccessToken();
+        String bearer2 = "Bearer " + accessToken2;
+
+        UUID userId2 = UUID.fromString(jwtService.extractUserId(accessToken2));
+
+        workspaceMemberRepository.save(WorkspaceMember.member(workspaceId, userId2));
+
+        String body = """
+            { "name": "After" }
+            """;
+
+        mockMvc.perform(
+                        patch("/api/v1/workspaces/{id}", workspaceId)
+                                .header(HttpHeaders.AUTHORIZATION, bearer2)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .accept(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.title").value("Forbidden"))
+                .andExpect(jsonPath("$.detail").value("Only workspace owner can perform this action."));
+    }
+
+    @Test
     void closeWorkspace_shouldReturn204() throws Exception {
         UUID id = createWorkspaceAndReturnId("Test");
 
@@ -399,6 +434,30 @@ class WorkspaceApiIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.title").value("Not Found"))
                 .andExpect(jsonPath("$.detail").value("Workspace not found."));
+    }
+
+    @Test
+    void closeWorkspace_whenUserIsMemberButNotOwner_shouldReturn403_andProblemDetail() throws Exception {
+        UUID workspaceId = createWorkspaceAndReturnId("Test");
+
+        AuthTestHelper auth2 = new AuthTestHelper(mockMvc, notifier);
+        String accessToken2 = auth2.obtainAccessToken();
+        String bearer2 = "Bearer " + accessToken2;
+
+        UUID userId2 = UUID.fromString(jwtService.extractUserId(accessToken2));
+
+        workspaceMemberRepository.save(WorkspaceMember.member(workspaceId, userId2));
+
+        mockMvc.perform(
+                        post("/api/v1/workspaces/{id}/close", workspaceId)
+                                .header(HttpHeaders.AUTHORIZATION, bearer2)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.title").value("Forbidden"))
+                .andExpect(jsonPath("$.detail").value("Only workspace owner can perform this action."));
     }
 
     @Test

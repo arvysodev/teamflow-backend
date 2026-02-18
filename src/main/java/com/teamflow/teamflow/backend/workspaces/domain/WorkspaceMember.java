@@ -1,6 +1,5 @@
 package com.teamflow.teamflow.backend.workspaces.domain;
 
-import com.teamflow.teamflow.backend.users.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
@@ -42,4 +41,7 @@ public class WorkspaceMember {
         return new WorkspaceMember(workspaceId, userId, WorkspaceMemberRole.OWNER);
     }
 
+    public static WorkspaceMember member(UUID workspaceId, UUID userId) {
+        return new WorkspaceMember(workspaceId, userId, WorkspaceMemberRole.MEMBER);
+    }
 }
