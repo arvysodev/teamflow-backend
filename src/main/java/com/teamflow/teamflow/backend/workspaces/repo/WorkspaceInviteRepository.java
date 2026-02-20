@@ -15,5 +15,5 @@ public interface WorkspaceInviteRepository extends JpaRepository<WorkspaceInvite
             LocalDateTime now
     );
 
-    Optional<WorkspaceInvite> findTokenByHash(String tokenHash);
+    Optional<WorkspaceInvite> findByTokenHash(String tokenHash);
 }

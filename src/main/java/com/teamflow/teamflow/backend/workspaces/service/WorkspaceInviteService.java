@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -102,7 +101,7 @@ public class WorkspaceInviteService {
         String userEmail = currentUserProvider.getCurrentUserEmail().toLowerCase().strip();
         LocalDateTime now = LocalDateTime.now();
 
-        WorkspaceInvite invite = workspaceInviteRepository.findTokenByHash(tokenHash)
+        WorkspaceInvite invite = workspaceInviteRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new NotFoundException("Invite token is invalid."));
 
         if (invite.getAcceptedAt() != null) {

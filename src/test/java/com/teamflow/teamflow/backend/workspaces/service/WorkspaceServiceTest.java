@@ -5,6 +5,7 @@ import com.teamflow.teamflow.backend.common.errors.ConflictException;
 import com.teamflow.teamflow.backend.common.errors.NotFoundException;
 import com.teamflow.teamflow.backend.common.security.CurrentUserProvider;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
+import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberRole;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceStatus;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
@@ -187,6 +188,8 @@ public class WorkspaceServiceTest {
         String newName = "  After  ";
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(id, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
 
         when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
         when(workspaceRepository.existsByNameAndIdNot("After", id)).thenReturn(false);
@@ -196,7 +199,8 @@ public class WorkspaceServiceTest {
         assertSame(ws, result);
         assertEquals("After", result.getName());
 
-        verify(currentUserProvider).getCurrentUserId();
+        verify(currentUserProvider, times(2)).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(id, userId);
         verify(workspaceRepository).findByIdAndMember(id, userId);
         verify(workspaceRepository).existsByNameAndIdNot("After", id);
         verify(workspaceRepository, never()).save(any());
@@ -245,6 +249,8 @@ public class WorkspaceServiceTest {
         String newName = " After ";
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(id, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
 
         when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
         when(workspaceRepository.existsByNameAndIdNot("After", id)).thenReturn(false);
@@ -256,7 +262,8 @@ public class WorkspaceServiceTest {
 
         assertEquals("Closed workspace cannot be renamed.", exception.getMessage());
 
-        verify(currentUserProvider).getCurrentUserId();
+        verify(currentUserProvider, times(2)).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(id, userId);
         verify(workspaceRepository).existsByNameAndIdNot("After", id);
         verify(workspaceRepository).findByIdAndMember(id, userId);
         verify(workspaceRepository, never()).save(any());
@@ -284,7 +291,6 @@ public class WorkspaceServiceTest {
         verify(currentUserProvider).getCurrentUserId();
         verify(workspaceRepository, never()).save(any());
         verify(workspaceRepository).existsByNameAndIdNot(newName, id);
-        verify(workspaceRepository).findByIdAndMember(id, userId);
         verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
 
@@ -295,13 +301,16 @@ public class WorkspaceServiceTest {
         Workspace ws = new Workspace("Test");
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(id, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
 
         when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
 
         workspaceService.closeWorkspace(id);
         assertEquals(WorkspaceStatus.CLOSED, ws.getStatus());
 
-        verify(currentUserProvider).getCurrentUserId();
+        verify(currentUserProvider, times(2)).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(id, userId);
         verify(workspaceRepository).findByIdAndMember(id, userId);
         verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
@@ -314,6 +323,8 @@ public class WorkspaceServiceTest {
         ws.close();
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(id, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
 
         when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
 
@@ -324,7 +335,8 @@ public class WorkspaceServiceTest {
 
         assertEquals("Workspace is already closed.", exception.getMessage());
 
-        verify(currentUserProvider).getCurrentUserId();
+        verify(currentUserProvider, times(2)).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(id, userId);
         verify(workspaceRepository).findByIdAndMember(id ,userId);
         verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
@@ -346,7 +358,6 @@ public class WorkspaceServiceTest {
         assertEquals("Workspace not found.", exception.getMessage());
 
         verify(currentUserProvider).getCurrentUserId();
-        verify(workspaceRepository).findByIdAndMember(id, userId);
         verifyNoMoreInteractions(workspaceRepository);
     }
 
@@ -358,13 +369,16 @@ public class WorkspaceServiceTest {
         ws.close();
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(id, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
 
         when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
 
         workspaceService.restoreWorkspace(id);
         assertEquals(WorkspaceStatus.ACTIVE, ws.getStatus());
 
-        verify(currentUserProvider).getCurrentUserId();
+        verify(currentUserProvider, times(2)).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(id, userId);
         verify(workspaceRepository).findByIdAndMember(id, userId);
         verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
@@ -377,6 +391,8 @@ public class WorkspaceServiceTest {
         ws.restore();
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(id, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
 
         when(workspaceRepository.findByIdAndMember(id, userId)).thenReturn(Optional.of(ws));
 
@@ -387,7 +403,8 @@ public class WorkspaceServiceTest {
 
         assertEquals("Workspace is already active.", exception.getMessage());
 
-        verify(currentUserProvider).getCurrentUserId();
+        verify(currentUserProvider, times(2)).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(id, userId);
         verify(workspaceRepository).findByIdAndMember(id, userId);
         verifyNoMoreInteractions(workspaceRepository, currentUserProvider);
     }
@@ -409,7 +426,6 @@ public class WorkspaceServiceTest {
         assertEquals("Workspace not found.", exception.getMessage());
 
         verify(currentUserProvider).getCurrentUserId();
-        verify(workspaceRepository).findByIdAndMember(id, userId);
         verifyNoMoreInteractions(workspaceRepository);
     }
 }

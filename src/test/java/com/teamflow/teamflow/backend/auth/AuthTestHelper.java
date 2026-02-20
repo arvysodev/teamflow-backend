@@ -20,14 +20,13 @@ public class AuthTestHelper {
         this.notifier = notifier;
     }
 
-    public String obtainAccessToken() throws Exception {
+    private String obtainAccessToken(String email) throws Exception {
         String username = "testuser_" + UUID.randomUUID();
-        String email = "user_" + UUID.randomUUID() + "@example.com";
         String password = "Password123!";
 
         String registerBody = """
-                { "username": "%s", "email": "%s", "password": "%s" }
-                """.formatted(username, email, password);
+            { "username": "%s", "email": "%s", "password": "%s" }
+            """.formatted(username, email, password);
 
         mockMvc.perform(
                         post("/api/v1/auth/register")
@@ -40,8 +39,8 @@ public class AuthTestHelper {
         String verificationToken = notifier.consumeLastEmailVerificationToken();
 
         String verifyBody = """
-                { "token": "%s" }
-                """.formatted(verificationToken);
+            { "token": "%s" }
+            """.formatted(verificationToken);
 
         mockMvc.perform(
                         post("/api/v1/auth/verify-email")
@@ -52,8 +51,8 @@ public class AuthTestHelper {
                 .andExpect(status().isNoContent());
 
         String loginBody = """
-                { "email": "%s", "password": "%s" }
-                """.formatted(email, password);
+            { "email": "%s", "password": "%s" }
+            """.formatted(email, password);
 
         var loginResult = mockMvc.perform(
                         post("/api/v1/auth/login")
@@ -66,6 +65,15 @@ public class AuthTestHelper {
 
         String json = loginResult.getResponse().getContentAsString();
         return JsonPath.read(json, "$.accessToken");
+    }
+
+    public String obtainAccessToken() throws Exception {
+        String email = "user_" + UUID.randomUUID() + "@example.com";
+        return obtainAccessToken(email);
+    }
+
+    public String obtainBearerToken(String email) throws Exception {
+        return "Bearer " + obtainAccessToken(email);
     }
 
     public String obtainBearerToken() throws Exception {
