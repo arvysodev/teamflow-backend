@@ -55,9 +55,7 @@ class ProjectApiIT extends IntegrationTestBase {
 
     @BeforeEach
     void cleanDb() throws Exception {
-        workspaceMemberRepository.deleteAll();
-        projectRepository.deleteAll();
-        workspaceRepository.deleteAll();
+        cleanDatabase();
 
         authTestHelper = new AuthTestHelper(mockMvc, notifier);
         bearer = authTestHelper.obtainBearerToken();

@@ -49,8 +49,7 @@ class WorkspaceLeaveApiIT extends IntegrationTestBase {
 
     @BeforeEach
     void cleanDb() throws Exception {
-        workspaceMemberRepository.deleteAll();
-        workspaceRepository.deleteAll();
+        cleanDatabase();
 
         authTestHelper = new AuthTestHelper(mockMvc, notifier);
         bearer = authTestHelper.obtainBearerToken();

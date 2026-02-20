@@ -7,7 +7,6 @@ import com.teamflow.teamflow.backend.auth.security.JwtService;
 import com.teamflow.teamflow.backend.support.IntegrationTestBase;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMember;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberId;
-import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberRole;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,8 +51,7 @@ class WorkspaceRemoveMemberApiIT extends IntegrationTestBase {
 
     @BeforeEach
     void cleanDb() throws Exception {
-        workspaceMemberRepository.deleteAll();
-        workspaceRepository.deleteAll();
+        cleanDatabase();
 
         authTestHelper = new AuthTestHelper(mockMvc, notifier);
         bearer = authTestHelper.obtainBearerToken();
