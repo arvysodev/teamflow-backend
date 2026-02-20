@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class WorkspaceInviteApiIT extends IntegrationTestBase {
+class WorkspaceInvitesApiIT extends IntegrationTestBase {
 
     @Autowired
     MockMvc mockMvc;
