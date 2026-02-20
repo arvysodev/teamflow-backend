@@ -89,4 +89,22 @@ public class WorkspaceController {
                 .map(workspaceMemberMapper::toResponse)
                 .toList();
     }
+
+    @DeleteMapping("/{id}/leave")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void leaveWorkspace(@PathVariable UUID id) {
+        workspaceService.leaveWorkspace(id);
+    }
+
+    @DeleteMapping("/{id}/members/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeMember(@PathVariable UUID id, @PathVariable UUID userId) {
+        workspaceService.removeMember(id, userId);
+    }
+
+    @PostMapping("/{id}/members/{userId}/promote")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void promoteMember(@PathVariable UUID id, @PathVariable UUID userId) {
+        workspaceService.promoteMember(id, userId);
+    }
 }

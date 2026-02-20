@@ -5,10 +5,7 @@ import com.teamflow.teamflow.backend.common.errors.ConflictException;
 import com.teamflow.teamflow.backend.common.errors.ForbiddenException;
 import com.teamflow.teamflow.backend.common.errors.NotFoundException;
 import com.teamflow.teamflow.backend.common.security.CurrentUserProvider;
-import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
-import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMember;
-import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberRole;
-import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceStatus;
+import com.teamflow.teamflow.backend.workspaces.domain.*;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceRepository;
 import org.springframework.data.domain.Page;
@@ -133,5 +130,79 @@ public class WorkspaceService {
         if (role != WorkspaceMemberRole.OWNER) {
             throw new ForbiddenException("Only workspace owner can perform this action.");
         }
+    }
+
+    @Transactional
+    public void leaveWorkspace(UUID workspaceId) {
+        UUID userId = currentUserProvider.getCurrentUserId();
+
+        WorkspaceMemberRole role = workspaceMemberRepository
+                .findRole(workspaceId, userId)
+                .orElseThrow(() -> new NotFoundException("Workspace not found."));
+
+        if (role == WorkspaceMemberRole.OWNER) {
+            long ownersCount = workspaceMemberRepository
+                    .countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER);
+
+            if (ownersCount <= 1) {
+                throw new ConflictException("Cannot leave workspace as the only owner.");
+            }
+        }
+
+        workspaceMemberRepository.deleteById(new WorkspaceMemberId(workspaceId, userId));
+    }
+
+    @Transactional
+    public void removeMember(UUID workspaceId, UUID memberUserId) {
+        UUID actorId = currentUserProvider.getCurrentUserId();
+
+        WorkspaceMemberRole actorRole = workspaceMemberRepository.findRole(workspaceId, actorId)
+                .orElseThrow(() -> new NotFoundException("Workspace not found."));
+
+        if (actorRole != WorkspaceMemberRole.OWNER) {
+            throw new ForbiddenException("Only workspace owner can perform this action.");
+        }
+
+        if (actorId.equals(memberUserId)) {
+            throw new BadRequestException("Use leave endpoint to leave the workspace.");
+        }
+
+        boolean memberExists = workspaceMemberRepository.existsByIdWorkspaceIdAndIdUserId(workspaceId, memberUserId);
+        if (!memberExists) {
+            throw new NotFoundException("Member not found.");
+        }
+
+        WorkspaceMemberRole targetRole = workspaceMemberRepository.findRole(workspaceId, memberUserId)
+                .orElseThrow(() -> new NotFoundException("Member not found."));
+
+        if (targetRole == WorkspaceMemberRole.OWNER) {
+            long ownersCount = workspaceMemberRepository.countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER);
+            if (ownersCount <= 1) {
+                throw new ConflictException("Cannot remove the only owner.");
+            }
+        }
+
+        workspaceMemberRepository.deleteById(new WorkspaceMemberId(workspaceId, memberUserId));
+    }
+
+    @Transactional
+    public void promoteMember(UUID workspaceId, UUID memberUserId) {
+        UUID actorId = currentUserProvider.getCurrentUserId();
+
+        WorkspaceMemberRole actorRole = workspaceMemberRepository.findRole(workspaceId, actorId)
+                .orElseThrow(() -> new NotFoundException("Workspace not found."));
+
+        if (actorRole != WorkspaceMemberRole.OWNER) {
+            throw new ForbiddenException("Only workspace owner can perform this action.");
+        }
+
+        WorkspaceMemberRole targetRole = workspaceMemberRepository.findRole(workspaceId, memberUserId)
+                .orElseThrow(() -> new NotFoundException("Member not found."));
+
+        if (targetRole == WorkspaceMemberRole.OWNER) {
+            throw new ConflictException("Member is already an owner.");
+        }
+
+        workspaceMemberRepository.updateRole(workspaceId, memberUserId, WorkspaceMemberRole.OWNER);
     }
 }

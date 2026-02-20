@@ -2,9 +2,11 @@ package com.teamflow.teamflow.backend.workspaces.service;
 
 import com.teamflow.teamflow.backend.common.errors.BadRequestException;
 import com.teamflow.teamflow.backend.common.errors.ConflictException;
+import com.teamflow.teamflow.backend.common.errors.ForbiddenException;
 import com.teamflow.teamflow.backend.common.errors.NotFoundException;
 import com.teamflow.teamflow.backend.common.security.CurrentUserProvider;
 import com.teamflow.teamflow.backend.workspaces.domain.Workspace;
+import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberId;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceMemberRole;
 import com.teamflow.teamflow.backend.workspaces.domain.WorkspaceStatus;
 import com.teamflow.teamflow.backend.workspaces.repo.WorkspaceMemberRepository;
@@ -427,5 +429,406 @@ public class WorkspaceServiceTest {
 
         verify(currentUserProvider).getCurrentUserId();
         verifyNoMoreInteractions(workspaceRepository);
+    }
+
+    @Test
+    void leaveWorkspace_whenMember_shouldDeleteMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(workspaceId, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
+
+        workspaceService.leaveWorkspace(workspaceId);
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, userId);
+        verify(workspaceMemberRepository)
+                .deleteById(new WorkspaceMemberId(workspaceId, userId));
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void leaveWorkspace_whenOwnerAndMultipleOwners_shouldDeleteMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(workspaceId, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository
+                .countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER))
+                .thenReturn(2L);
+
+        workspaceService.leaveWorkspace(workspaceId);
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, userId);
+        verify(workspaceMemberRepository)
+                .countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER);
+        verify(workspaceMemberRepository)
+                .deleteById(new WorkspaceMemberId(workspaceId, userId));
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void leaveWorkspace_whenOwnerAndSingleOwner_shouldThrowConflict() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(workspaceId, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository
+                .countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER))
+                .thenReturn(1L);
+
+        ConflictException exception = assertThrows(
+                ConflictException.class,
+                () -> workspaceService.leaveWorkspace(workspaceId)
+        );
+
+        assertEquals("Cannot leave workspace as the only owner.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, userId);
+        verify(workspaceMemberRepository)
+                .countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER);
+
+        verify(workspaceMemberRepository, never())
+                .deleteById(any());
+
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void leaveWorkspace_whenNotMember_shouldThrowNotFound() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(workspaceId, userId))
+                .thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> workspaceService.leaveWorkspace(workspaceId)
+        );
+
+        assertEquals("Workspace not found.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, userId);
+
+        verify(workspaceMemberRepository, never())
+                .deleteById(any());
+
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void removeMember_whenOwnerRemovesMember_shouldSucceed() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
+        when(workspaceMemberRepository.findRole(workspaceId, ownerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository.existsByIdWorkspaceIdAndIdUserId(workspaceId, memberId))
+                .thenReturn(true);
+        when(workspaceMemberRepository.findRole(workspaceId, memberId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
+
+        workspaceService.removeMember(workspaceId, memberId);
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, ownerId);
+        verify(workspaceMemberRepository).existsByIdWorkspaceIdAndIdUserId(workspaceId, memberId);
+        verify(workspaceMemberRepository).findRole(workspaceId, memberId);
+        verify(workspaceMemberRepository).deleteById(new WorkspaceMemberId(workspaceId, memberId));
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void removeMember_whenActorNotMember_shouldThrowNotFound() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(actorId);
+        when(workspaceMemberRepository.findRole(workspaceId, actorId))
+                .thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> workspaceService.removeMember(workspaceId, memberId)
+        );
+
+        assertEquals("Workspace not found.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, actorId);
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void removeMember_whenActorIsMemberButNotOwner_shouldThrowForbidden() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(actorId);
+        when(workspaceMemberRepository.findRole(workspaceId, actorId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> workspaceService.removeMember(workspaceId, memberId)
+        );
+
+        assertEquals("Only workspace owner can perform this action.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, actorId);
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void removeMember_whenOwnerRemovesSelf_shouldThrowBadRequest() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
+        when(workspaceMemberRepository.findRole(workspaceId, ownerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        BadRequestException exception = assertThrows(
+                BadRequestException.class,
+                () -> workspaceService.removeMember(workspaceId, ownerId)
+        );
+
+        assertEquals("Use leave endpoint to leave the workspace.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, ownerId);
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void removeMember_whenTargetNotMember_shouldThrowNotFound() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
+        when(workspaceMemberRepository.findRole(workspaceId, ownerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository.existsByIdWorkspaceIdAndIdUserId(workspaceId, memberId))
+                .thenReturn(false);
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> workspaceService.removeMember(workspaceId, memberId)
+        );
+
+        assertEquals("Member not found.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, ownerId);
+        verify(workspaceMemberRepository).existsByIdWorkspaceIdAndIdUserId(workspaceId, memberId);
+        verify(workspaceMemberRepository, never()).deleteById(any());
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void removeMember_whenRemovingOnlyOwner_shouldThrowConflict() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID targetOwnerId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
+        when(workspaceMemberRepository.findRole(workspaceId, ownerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository.existsByIdWorkspaceIdAndIdUserId(workspaceId, targetOwnerId))
+                .thenReturn(true);
+        when(workspaceMemberRepository.findRole(workspaceId, targetOwnerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository.countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER))
+                .thenReturn(1L);
+
+        ConflictException exception = assertThrows(
+                ConflictException.class,
+                () -> workspaceService.removeMember(workspaceId, targetOwnerId)
+        );
+
+        assertEquals("Cannot remove the only owner.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, ownerId);
+        verify(workspaceMemberRepository).existsByIdWorkspaceIdAndIdUserId(workspaceId, targetOwnerId);
+        verify(workspaceMemberRepository).findRole(workspaceId, targetOwnerId);
+        verify(workspaceMemberRepository).countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER);
+        verify(workspaceMemberRepository, never()).deleteById(any());
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void removeMember_whenTargetOwnerAndMultipleOwners_shouldDeleteMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID targetOwnerId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
+        when(workspaceMemberRepository.findRole(workspaceId, ownerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository.existsByIdWorkspaceIdAndIdUserId(workspaceId, targetOwnerId))
+                .thenReturn(true);
+        when(workspaceMemberRepository.findRole(workspaceId, targetOwnerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository.countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER))
+                .thenReturn(2L);
+
+        workspaceService.removeMember(workspaceId, targetOwnerId);
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, ownerId);
+        verify(workspaceMemberRepository).existsByIdWorkspaceIdAndIdUserId(workspaceId, targetOwnerId);
+        verify(workspaceMemberRepository).findRole(workspaceId, targetOwnerId);
+        verify(workspaceMemberRepository).countByIdWorkspaceIdAndRole(workspaceId, WorkspaceMemberRole.OWNER);
+        verify(workspaceMemberRepository).deleteById(new WorkspaceMemberId(workspaceId, targetOwnerId));
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void promoteMember_whenOwnerPromotesMember_shouldSucceed() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
+        when(workspaceMemberRepository.findRole(workspaceId, ownerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository.findRole(workspaceId, memberId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
+
+        when(workspaceMemberRepository.updateRole(workspaceId, memberId, WorkspaceMemberRole.OWNER))
+                .thenReturn(1);
+
+        workspaceService.promoteMember(workspaceId, memberId);
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, ownerId);
+        verify(workspaceMemberRepository).findRole(workspaceId, memberId);
+        verify(workspaceMemberRepository).updateRole(workspaceId, memberId, WorkspaceMemberRole.OWNER);
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void promoteMember_whenActorNotMember_shouldThrowNotFound() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(actorId);
+        when(workspaceMemberRepository.findRole(workspaceId, actorId))
+                .thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> workspaceService.promoteMember(workspaceId, memberId)
+        );
+
+        assertEquals("Workspace not found.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, actorId);
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void promoteMember_whenActorIsMemberButNotOwner_shouldThrowForbidden() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(actorId);
+        when(workspaceMemberRepository.findRole(workspaceId, actorId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> workspaceService.promoteMember(workspaceId, memberId)
+        );
+
+        assertEquals("Only workspace owner can perform this action.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, actorId);
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void promoteMember_whenTargetNotMember_shouldThrowNotFound() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
+        when(workspaceMemberRepository.findRole(workspaceId, ownerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository.findRole(workspaceId, memberId))
+                .thenReturn(Optional.empty());
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> workspaceService.promoteMember(workspaceId, memberId)
+        );
+
+        assertEquals("Member not found.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, ownerId);
+        verify(workspaceMemberRepository).findRole(workspaceId, memberId);
+        verify(workspaceMemberRepository, never()).updateRole(any(), any(), any());
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void promoteMember_whenTargetAlreadyOwner_shouldThrowConflict() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID targetOwnerId = UUID.randomUUID();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
+        when(workspaceMemberRepository.findRole(workspaceId, ownerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        when(workspaceMemberRepository.findRole(workspaceId, targetOwnerId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.OWNER));
+
+        ConflictException exception = assertThrows(
+                ConflictException.class,
+                () -> workspaceService.promoteMember(workspaceId, targetOwnerId)
+        );
+
+        assertEquals("Member is already an owner.", exception.getMessage());
+
+        verify(currentUserProvider).getCurrentUserId();
+        verify(workspaceMemberRepository).findRole(workspaceId, ownerId);
+        verify(workspaceMemberRepository).findRole(workspaceId, targetOwnerId);
+        verify(workspaceMemberRepository, never()).updateRole(any(), any(), any());
+        verifyNoMoreInteractions(workspaceMemberRepository, currentUserProvider);
     }
 }
