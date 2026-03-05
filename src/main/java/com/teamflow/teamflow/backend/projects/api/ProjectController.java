@@ -40,13 +40,13 @@ public class ProjectController {
             @PathVariable UUID workspaceId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
-            @RequestParam(defaultValue = "ACTIVE") String status
+            @RequestParam(defaultValue = "ACTIVE") String status,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "updatedAt,desc") String sort
     ) {
-        PageRequest pr = PageRequest.of(page, size);
+        PageRequest pr = PageRequest.of(page, size, ProjectSorts.parse(sort));
 
-        Page<Project> result = "ARCHIVED".equalsIgnoreCase(status)
-                ? projectService.listArchived(workspaceId, pr)
-                : projectService.listActive(workspaceId, pr);
+        Page<Project> result = projectService.list(workspaceId, status, q, pr);
 
         return PageResponses.of(result, projectMapper::toResponse);
     }

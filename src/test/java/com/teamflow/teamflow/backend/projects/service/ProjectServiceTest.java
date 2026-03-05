@@ -130,10 +130,11 @@ class ProjectServiceTest {
     }
 
     @Test
-    void listActive_whenMember_shouldReturnPage() {
+    void list_whenActiveAndMember_shouldReturnPage() {
         UUID workspaceId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Pageable pageable = PageRequest.of(0, 10);
+
         Project p1 = new Project(workspaceId, "A", userId);
         Project p2 = new Project(workspaceId, "B", userId);
         Page<Project> repoPage = new PageImpl<>(List.of(p1, p2), pageable, 2);
@@ -141,22 +142,22 @@ class ProjectServiceTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
         when(workspaceMemberRepository.findRole(workspaceId, userId))
                 .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
-        when(projectRepository.findAllByWorkspaceIdAndStatus(workspaceId, ProjectStatus.ACTIVE, pageable))
+        when(projectRepository.search(workspaceId, ProjectStatus.ACTIVE, null, pageable))
                 .thenReturn(repoPage);
 
-        Page<Project> result = projectService.listActive(workspaceId, pageable);
+        Page<Project> result = projectService.list(workspaceId, "ACTIVE", null, pageable);
 
         assertSame(repoPage, result);
         assertEquals(2, result.getTotalElements());
 
         verify(currentUserProvider).getCurrentUserId();
         verify(workspaceMemberRepository).findRole(workspaceId, userId);
-        verify(projectRepository).findAllByWorkspaceIdAndStatus(workspaceId, ProjectStatus.ACTIVE, pageable);
+        verify(projectRepository).search(workspaceId, ProjectStatus.ACTIVE, null, pageable);
         verifyNoMoreInteractions(projectRepository, workspaceMemberRepository, currentUserProvider);
     }
 
     @Test
-    void listActive_whenNotMember_shouldThrowNotFound() {
+    void list_whenNotMember_shouldThrowNotFound() {
         UUID workspaceId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Pageable pageable = PageRequest.of(0, 10);
@@ -167,7 +168,7 @@ class ProjectServiceTest {
 
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
-                () -> projectService.listActive(workspaceId, pageable)
+                () -> projectService.list(workspaceId, "ACTIVE", null, pageable)
         );
 
         assertEquals("Workspace not found.", exception.getMessage());
@@ -179,10 +180,11 @@ class ProjectServiceTest {
     }
 
     @Test
-    void listArchived_whenMember_shouldReturnPage() {
+    void list_whenArchivedAndMember_shouldReturnPage() {
         UUID workspaceId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Pageable pageable = PageRequest.of(0, 10);
+
         Project p1 = new Project(workspaceId, "A", userId);
         Project p2 = new Project(workspaceId, "B", userId);
         Page<Project> repoPage = new PageImpl<>(List.of(p1, p2), pageable, 2);
@@ -190,17 +192,17 @@ class ProjectServiceTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
         when(workspaceMemberRepository.findRole(workspaceId, userId))
                 .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
-        when(projectRepository.findAllByWorkspaceIdAndStatus(workspaceId, ProjectStatus.ARCHIVED, pageable))
+        when(projectRepository.search(workspaceId, ProjectStatus.ARCHIVED, null, pageable))
                 .thenReturn(repoPage);
 
-        Page<Project> result = projectService.listArchived(workspaceId, pageable);
+        Page<Project> result = projectService.list(workspaceId, "ARCHIVED", null, pageable);
 
         assertSame(repoPage, result);
         assertEquals(2, result.getTotalElements());
 
         verify(currentUserProvider).getCurrentUserId();
         verify(workspaceMemberRepository).findRole(workspaceId, userId);
-        verify(projectRepository).findAllByWorkspaceIdAndStatus(workspaceId, ProjectStatus.ARCHIVED, pageable);
+        verify(projectRepository).search(workspaceId, ProjectStatus.ARCHIVED, null, pageable);
         verifyNoMoreInteractions(projectRepository, workspaceMemberRepository, currentUserProvider);
     }
 
@@ -225,6 +227,26 @@ class ProjectServiceTest {
         verify(workspaceMemberRepository).findRole(workspaceId, userId);
         verify(projectRepository).findByIdAndWorkspaceId(projectId, workspaceId);
         verifyNoMoreInteractions(projectRepository, workspaceMemberRepository, currentUserProvider);
+    }
+
+    @Test
+    void list_whenQueryBlank_shouldPassNullToRepository() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Project> repoPage = Page.empty(pageable);
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
+        when(workspaceMemberRepository.findRole(workspaceId, userId))
+                .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
+        when(projectRepository.search(workspaceId, ProjectStatus.ACTIVE, null, pageable))
+                .thenReturn(repoPage);
+
+        Page<Project> result = projectService.list(workspaceId, "ACTIVE", "   ", pageable);
+
+        assertSame(repoPage, result);
+
+        verify(projectRepository).search(workspaceId, ProjectStatus.ACTIVE, null, pageable);
     }
 
     @Test

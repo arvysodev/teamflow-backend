@@ -54,19 +54,18 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Project> listActive(UUID workspaceId, Pageable pageable) {
+    public Page<Project> list(UUID workspaceId, String status, String q, Pageable pageable) {
         UUID userId = currentUserProvider.getCurrentUserId();
         requireMember(workspaceId, userId);
 
-        return projectRepository.findAllByWorkspaceIdAndStatus(workspaceId, ProjectStatus.ACTIVE, pageable);
-    }
+        ProjectStatus st = "ARCHIVED".equalsIgnoreCase(status)
+                ? ProjectStatus.ARCHIVED
+                : ProjectStatus.ACTIVE;
 
-    @Transactional(readOnly = true)
-    public Page<Project> listArchived(UUID workspaceId, Pageable pageable) {
-        UUID userId = currentUserProvider.getCurrentUserId();
-        requireMember(workspaceId, userId);
+        String query = (q == null) ? null : q.strip();
+        if (query != null && query.isEmpty()) query = null;
 
-        return projectRepository.findAllByWorkspaceIdAndStatus(workspaceId, ProjectStatus.ARCHIVED, pageable);
+        return projectRepository.search(workspaceId, st, query, pageable);
     }
 
     @Transactional(readOnly = true)
