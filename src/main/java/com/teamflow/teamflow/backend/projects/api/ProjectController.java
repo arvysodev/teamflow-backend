@@ -41,7 +41,7 @@ public class ProjectController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(defaultValue = "ACTIVE") String status,
-            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "") String q,
             @RequestParam(defaultValue = "updatedAt,desc") String sort
     ) {
         PageRequest pr = PageRequest.of(page, size, ProjectSorts.parse(sort));

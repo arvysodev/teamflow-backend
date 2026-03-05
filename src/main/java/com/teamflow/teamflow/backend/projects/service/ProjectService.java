@@ -62,8 +62,7 @@ public class ProjectService {
                 ? ProjectStatus.ARCHIVED
                 : ProjectStatus.ACTIVE;
 
-        String query = (q == null) ? null : q.strip();
-        if (query != null && query.isEmpty()) query = null;
+        String query = (q == null) ? "" : q.strip();
 
         return projectRepository.search(workspaceId, st, query, pageable);
     }

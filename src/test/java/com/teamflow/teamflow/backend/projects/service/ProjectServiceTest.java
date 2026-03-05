@@ -142,7 +142,7 @@ class ProjectServiceTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
         when(workspaceMemberRepository.findRole(workspaceId, userId))
                 .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
-        when(projectRepository.search(workspaceId, ProjectStatus.ACTIVE, null, pageable))
+        when(projectRepository.search(workspaceId, ProjectStatus.ACTIVE, "", pageable))
                 .thenReturn(repoPage);
 
         Page<Project> result = projectService.list(workspaceId, "ACTIVE", null, pageable);
@@ -152,7 +152,7 @@ class ProjectServiceTest {
 
         verify(currentUserProvider).getCurrentUserId();
         verify(workspaceMemberRepository).findRole(workspaceId, userId);
-        verify(projectRepository).search(workspaceId, ProjectStatus.ACTIVE, null, pageable);
+        verify(projectRepository).search(workspaceId, ProjectStatus.ACTIVE, "", pageable);
         verifyNoMoreInteractions(projectRepository, workspaceMemberRepository, currentUserProvider);
     }
 
@@ -192,7 +192,7 @@ class ProjectServiceTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
         when(workspaceMemberRepository.findRole(workspaceId, userId))
                 .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
-        when(projectRepository.search(workspaceId, ProjectStatus.ARCHIVED, null, pageable))
+        when(projectRepository.search(workspaceId, ProjectStatus.ARCHIVED, "", pageable))
                 .thenReturn(repoPage);
 
         Page<Project> result = projectService.list(workspaceId, "ARCHIVED", null, pageable);
@@ -202,7 +202,7 @@ class ProjectServiceTest {
 
         verify(currentUserProvider).getCurrentUserId();
         verify(workspaceMemberRepository).findRole(workspaceId, userId);
-        verify(projectRepository).search(workspaceId, ProjectStatus.ARCHIVED, null, pageable);
+        verify(projectRepository).search(workspaceId, ProjectStatus.ARCHIVED, "", pageable);
         verifyNoMoreInteractions(projectRepository, workspaceMemberRepository, currentUserProvider);
     }
 
@@ -230,7 +230,7 @@ class ProjectServiceTest {
     }
 
     @Test
-    void list_whenQueryBlank_shouldPassNullToRepository() {
+    void list_whenQueryBlank_shouldPassEmptyStringToRepository() {
         UUID workspaceId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Pageable pageable = PageRequest.of(0, 10);
@@ -239,14 +239,14 @@ class ProjectServiceTest {
         when(currentUserProvider.getCurrentUserId()).thenReturn(userId);
         when(workspaceMemberRepository.findRole(workspaceId, userId))
                 .thenReturn(Optional.of(WorkspaceMemberRole.MEMBER));
-        when(projectRepository.search(workspaceId, ProjectStatus.ACTIVE, null, pageable))
+        when(projectRepository.search(workspaceId, ProjectStatus.ACTIVE, "", pageable))
                 .thenReturn(repoPage);
 
         Page<Project> result = projectService.list(workspaceId, "ACTIVE", "   ", pageable);
 
         assertSame(repoPage, result);
 
-        verify(projectRepository).search(workspaceId, ProjectStatus.ACTIVE, null, pageable);
+        verify(projectRepository).search(workspaceId, ProjectStatus.ACTIVE, "", pageable);
     }
 
     @Test
