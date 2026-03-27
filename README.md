@@ -208,8 +208,8 @@ security.jwt.issuer=${JWT_ISSUER:teamflow-backend}
 
 ## Swagger / OpenAPI
 
-- OpenAPI JSON: `GET /v3/api-docs`
-- Swagger UI: `GET /swagger-ui/index.html`
+- OpenAPI JSON: `/v3/api-docs`
+- Swagger UI: `/swagger-ui/index.html`
 
 ---
 
