@@ -307,4 +307,4 @@ Controllers stay thin; business rules live in services.
 
 ## Frontend 
 
-Frontend is currently in development and will be in separate repository.
+Frontend is available at https://github.com/arvysodev/teamflow-frontend
